@@ -3,9 +3,9 @@ use std::io::Read;
 
 pub fn star_one() -> u64 {
     #[cfg(not(test))]
-    const INPUT: &str = "src/day01/input.txt";
+    const INPUT: &str = "data/day01/input.txt";
     #[cfg(test)]
-    const INPUT: &str = "src/day01/test.txt";
+    const INPUT: &str = "data/day01/test.txt";
 
     let mut buffer = String::new();
     std::fs::File::open(INPUT)
@@ -36,9 +36,9 @@ pub fn star_one() -> u64 {
 
 pub fn star_two() -> u64 {
     #[cfg(not(test))]
-    const INPUT: &str = "src/day01/input.txt";
+    const INPUT: &str = "data/day01/input.txt";
     #[cfg(test)]
-    const INPUT: &str = "src/day01/test.txt";
+    const INPUT: &str = "data/day01/test.txt";
 
     let mut buffer = String::new();
     std::fs::File::open(INPUT)
