@@ -12,7 +12,7 @@ pub fn star_one() -> usize {
         .read_to_string(&mut buffer)
         .unwrap();
 
-    let simulation = Simulation::parse(&buffer);
+    let mut simulation = Simulation::parse(&buffer);
 
     match simulation.run() {
         SimulationOutcome::Exited(tiles) => tiles,
@@ -34,15 +34,30 @@ pub fn star_two() -> usize {
 
     let simulation = Simulation::parse(&buffer);
 
+    // if a tile was never visited in the dry run,
+    // placing an obstacle there would not make a difference
+    // so we can skip it
+    let already_visited = {
+        let mut simulation = simulation.clone();
+        simulation.run();
+        simulation
+            .map
+            .into_iter()
+            .filter(|(position, _)| simulation.visited.contains_key(position))
+            .collect::<HashMap<_, _>>()
+    };
+
     let mut total = 0;
 
-    for (&coordinates, tile) in simulation.map.iter() {
+    for (coordinates, tile) in already_visited {
         if coordinates == simulation.guard.position {
+            // cannot place an obstacle on the guard!
             continue;
         }
         match tile {
             Tile::Floor => {}
             Tile::Obstacle => {
+                // already an obstacle here!
                 continue;
             }
         }
@@ -111,7 +126,7 @@ impl Simulation {
         }
     }
 
-    fn run(mut self) -> SimulationOutcome {
+    fn run(&mut self) -> SimulationOutcome {
         loop {
             let next_tile = self.guard.looking_at();
             match self.map.get(&next_tile) {
