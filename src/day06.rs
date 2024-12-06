@@ -32,47 +32,37 @@ pub fn star_two() -> usize {
         .read_to_string(&mut buffer)
         .unwrap();
 
-    let simulation = Simulation::parse(&buffer);
-
-    // if a tile was never visited in the dry run,
-    // placing an obstacle there would not make a difference
-    // so we can skip it
-    let already_visited = {
-        let mut simulation = simulation.clone();
-        simulation.run();
-        simulation
-            .map
-            .into_iter()
-            .filter(|(position, _)| simulation.visited.contains_key(position))
-            .collect::<HashMap<_, _>>()
-    };
+    let mut simulation = Simulation::parse(&buffer);
 
     let mut total = 0;
 
-    for (coordinates, tile) in already_visited {
-        if coordinates == simulation.guard.position {
-            // cannot place an obstacle on the guard!
-            continue;
-        }
-        match tile {
-            Tile::Floor => {}
-            Tile::Obstacle => {
-                // already an obstacle here!
-                continue;
+    loop {
+        let next_tile = simulation.guard.looking_at();
+        if let Some(Tile::Floor) = simulation.map.get(&next_tile) {
+            match simulation.visited.get(&next_tile) {
+                None => {
+                    let mut divergent_simulation = simulation.clone();
+                    divergent_simulation.map.insert(next_tile, Tile::Obstacle);
+                    if let SimulationOutcome::Looped = divergent_simulation.run() {
+                        total += 1;
+                    }
+                }
+                Some(seen_directions)
+                    if seen_directions.get_visited(&simulation.guard.direction) =>
+                {
+                    let mut divergent_simulation = simulation.clone();
+                    divergent_simulation.map.insert(next_tile, Tile::Obstacle);
+                    if let SimulationOutcome::Looped = divergent_simulation.run() {
+                        total += 1;
+                    }
+                }
+                Some(_) => {}
             }
         }
-        let mut simulation = simulation.clone();
-        simulation.map.insert(coordinates, Tile::Obstacle);
-        match simulation.run() {
-            SimulationOutcome::Exited(_) => {
-                continue;
-            }
-            SimulationOutcome::Looped => {}
+        if simulation.step().is_some() {
+            return total;
         }
-        total += 1;
     }
-
-    total
 }
 
 #[derive(Clone)]
@@ -115,36 +105,50 @@ impl Simulation {
 
         let guard = guard.unwrap();
 
-        Self {
-            visited: HashMap::from([(guard.position, {
-                let mut visited_directions = VisitedDirections::default();
-                visited_directions.set_visited(&guard.direction);
-                visited_directions
-            })]),
+        let mut this = Self {
+            visited: HashMap::default(),
             guard,
             map,
+        };
+        this.reset(guard);
+        this
+    }
+
+    fn reset(&mut self, guard: Guard) {
+        self.visited = HashMap::from([(guard.position, {
+            let mut visited_directions = VisitedDirections::default();
+            visited_directions.set_visited(&guard.direction);
+            visited_directions
+        })]);
+        self.guard = guard;
+    }
+
+    fn step(&mut self) -> Option<SimulationOutcome> {
+        let next_tile = self.guard.looking_at();
+        match self.map.get(&next_tile) {
+            None => {
+                return Some(SimulationOutcome::Exited(self.visited.len()));
+            }
+            Some(Tile::Floor) => {
+                self.guard.step_forward();
+            }
+            Some(Tile::Obstacle) => {
+                self.guard.rotate_right();
+            }
         }
+        let visited = self.visited.entry(self.guard.position).or_default();
+        if visited.get_visited(&self.guard.direction) {
+            return Some(SimulationOutcome::Looped);
+        }
+        visited.set_visited(&self.guard.direction);
+        None
     }
 
     fn run(&mut self) -> SimulationOutcome {
         loop {
-            let next_tile = self.guard.looking_at();
-            match self.map.get(&next_tile) {
-                None => {
-                    return SimulationOutcome::Exited(self.visited.len());
-                }
-                Some(Tile::Floor) => {
-                    self.guard.step_forward();
-                }
-                Some(Tile::Obstacle) => {
-                    self.guard.rotate_right();
-                }
+            if let Some(outcome) = self.step() {
+                return outcome;
             }
-            let visited = self.visited.entry(self.guard.position).or_default();
-            if visited.get_visited(&self.guard.direction) {
-                return SimulationOutcome::Looped;
-            }
-            visited.set_visited(&self.guard.direction);
         }
     }
 }
