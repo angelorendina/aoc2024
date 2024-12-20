@@ -17,6 +17,7 @@ mod day16;
 mod day17;
 mod day18;
 mod day19;
+mod day20;
 
 fn main() {
     println!("01.1: {}", solve_timed(day01::star_one));
@@ -57,6 +58,8 @@ fn main() {
     println!("18:2: {}", solve_timed(day18::star_two));
     println!("19:1: {}", solve_timed(day19::star_one));
     println!("19:2: {}", solve_timed(day19::star_two));
+    println!("20:1: {}", solve_timed(day20::star_one));
+    println!("20:2: {}", solve_timed(day20::star_two));
 }
 
 fn solve_timed<F, O>(f: F) -> String
